@@ -4,29 +4,22 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+
+	"npm-tiny-package-manager/npm"
 )
 
-type (
-	Dependencies map[string]string
-)
+const PATH = "package.json"
 
-type PackageJson struct {
-	Dependencies    Dependencies
-	DevDependencies Dependencies
-}
-
-const path = "package.json"
-
-func ParsePackageJson() (PackageJson, error) {
-	jsonFile, err := os.Open(path)
+func ParsePackageJson() (npm.PackageJson, error) {
+	jsonFile, err := os.Open(PATH)
 	if err != nil {
-		return PackageJson{}, err
+		return npm.PackageJson{}, err
 	}
 	defer jsonFile.Close()
 
 	byteValue, _ := io.ReadAll(jsonFile)
 
-	var pkj PackageJson
+	var pkj npm.PackageJson
 	json.Unmarshal([]byte(byteValue), &pkj)
 
 	return pkj, nil
