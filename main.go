@@ -4,6 +4,8 @@ import (
 	"npm-tiny-package-manager/file"
 	"npm-tiny-package-manager/npm"
 	"npm-tiny-package-manager/resolver"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -17,18 +19,26 @@ func main() {
 	}
 	npmManifestCache := make(map[npm.PackageName]npm.NpmManifest)
 
+	var eg errgroup.Group
+
 	for pkgName, ver := range root.Dependencies {
 		err = resolver.ResolveRecursively(pkgName, npm.Version(ver), info, npmManifestCache)
 		if err != nil {
 			panic(err)
 		}
-
 	}
 
 	for pkgName, topLevel := range info.TopLevel {
-		err := npm.InstallTarball(pkgName, topLevel.TarballUrl)
-		if err != nil {
-			panic(err)
-		}
+		eg.Go(func() error {
+			err := npm.InstallTarball(pkgName, topLevel.TarballUrl)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		panic(err)
 	}
 }
