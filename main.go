@@ -17,12 +17,11 @@ func main() {
 	info := resolver.Info{
 		TopLevel: make(map[npm.PackageName]resolver.TopLevel),
 	}
-	npmManifestCache := make(map[npm.PackageName]npm.NpmManifest)
 
 	var eg errgroup.Group
 
 	for pkgName, ver := range root.Dependencies {
-		err = resolver.ResolveRecursively(pkgName, npm.Version(ver), info, npmManifestCache)
+		err = resolver.ResolveRecursively(pkgName, npm.Version(ver), info)
 		if err != nil {
 			panic(err)
 		}

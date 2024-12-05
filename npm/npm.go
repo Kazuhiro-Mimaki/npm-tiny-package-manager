@@ -47,8 +47,10 @@ type NpmManifestCache map[PackageName]NpmManifest
 
 const REGISTRY = "https://registry.npmjs.org"
 
-func FetchPackageManifest(name PackageName, cache NpmManifestCache) (NpmManifest, error) {
-	if v, ok := cache[name]; ok {
+var CACHE = make(NpmManifestCache)
+
+func FetchPackageManifest(name PackageName) (NpmManifest, error) {
+	if v, ok := CACHE[name]; ok {
 		return v, nil
 	}
 	resp, err := http.Get(fmt.Sprintf("%s/%s", REGISTRY, name))
@@ -64,6 +66,7 @@ func FetchPackageManifest(name PackageName, cache NpmManifestCache) (NpmManifest
 	if err := json.Unmarshal(body, &nm); err != nil {
 		return NpmManifest{}, err
 	}
+	CACHE[name] = nm
 	return nm, nil
 }
 

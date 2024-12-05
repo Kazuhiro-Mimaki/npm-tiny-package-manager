@@ -16,8 +16,8 @@ type TopLevel struct {
 	Version    npm.Version
 }
 
-func ResolveRecursively(pkgName npm.PackageName, constraint npm.Version, installList Info, npmManifestCache npm.NpmManifestCache) error {
-	manifest, err := npm.FetchPackageManifest(pkgName, npmManifestCache)
+func ResolveRecursively(pkgName npm.PackageName, constraint npm.Version, installList Info) error {
+	manifest, err := npm.FetchPackageManifest(pkgName)
 	if err != nil {
 		return err
 	}
@@ -38,7 +38,7 @@ func ResolveRecursively(pkgName npm.PackageName, constraint npm.Version, install
 
 	if len(matchedManifest.Dependencies) > 0 {
 		for depName, depConstraint := range matchedManifest.Dependencies {
-			err = ResolveRecursively(depName, depConstraint, installList, npmManifestCache)
+			err = ResolveRecursively(depName, depConstraint, installList)
 			if err != nil {
 				return err
 			}

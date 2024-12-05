@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "The npm tiny package manager",
   "dependencies": {
-    "vite": "^3.0.4"
+    "vue": "*",
+    "@vitejs/plugin-vue": "^3.0.1",
+    "@vue/tsconfig": "^0.1.3",
+    "typescript": "~4.7.4",
+    "vite": "^3.0.4",
+    "vue-tsc": "^0.39.5"
   }
 }
