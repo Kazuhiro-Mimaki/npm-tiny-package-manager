@@ -3,7 +3,7 @@ package main
 import (
 	"npm-tiny-package-manager/file"
 	"npm-tiny-package-manager/npm"
-	"npm-tiny-package-manager/utils"
+	"npm-tiny-package-manager/resolver"
 )
 
 func main() {
@@ -11,18 +11,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	info := resolver.Info{
+		TopLevel: make(map[npm.PackageName]resolver.TopLevel),
+	}
+	npmManifestCache := make(map[npm.PackageName]npm.NpmManifest)
+
 	for pkgName, ver := range root.Dependencies {
-		nm, err := npm.FetchPackageManifest(pkgName)
+		err = resolver.ResolveRecursively(pkgName, npm.Version(ver), info, npmManifestCache)
 		if err != nil {
 			panic(err)
 		}
 
-		msv, err := npm.MaxSatisfyingVer(utils.MapKeysToSlice(nm.Versions), string(ver))
-		if err != nil {
-			panic(err)
-		}
+	}
 
-		err = npm.InstallTarball(nm, npm.Version(msv))
+	for pkgName, topLevel := range info.TopLevel {
+		err := npm.InstallTarball(pkgName, topLevel.TarballUrl)
 		if err != nil {
 			panic(err)
 		}

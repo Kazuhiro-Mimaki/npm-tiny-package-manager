@@ -43,9 +43,14 @@ type NpmManifest struct {
 	Versions map[Version]Manifest
 }
 
+type NpmManifestCache map[PackageName]NpmManifest
+
 const REGISTRY = "https://registry.npmjs.org"
 
-func FetchPackageManifest(name PackageName) (NpmManifest, error) {
+func FetchPackageManifest(name PackageName, cache NpmManifestCache) (NpmManifest, error) {
+	if v, ok := cache[name]; ok {
+		return v, nil
+	}
 	resp, err := http.Get(fmt.Sprintf("%s/%s", REGISTRY, name))
 	if err != nil {
 		return NpmManifest{}, err
@@ -62,11 +67,10 @@ func FetchPackageManifest(name PackageName) (NpmManifest, error) {
 	return nm, nil
 }
 
-func InstallTarball(npmManifest NpmManifest, version Version) error {
+func InstallTarball(pkgName PackageName, tarballUrl string) error {
 	var err error
 
-	url := npmManifest.Versions[version].Dist.Tarball
-	resp, err := http.Get(url)
+	resp, err := http.Get(tarballUrl)
 	if err != nil {
 		return err
 	}
@@ -93,7 +97,7 @@ func InstallTarball(npmManifest NpmManifest, version Version) error {
 			return err
 		}
 
-		path := fmt.Sprintf("./node_modules/%s/%s", npmManifest.Name, strings.Replace(header.Name, "package/", "", 1))
+		path := fmt.Sprintf("./node_modules/%s/%s", pkgName, strings.Replace(header.Name, "package/", "", 1))
 
 		err = install(tarReader, path)
 		if err != nil {
@@ -105,12 +109,13 @@ func InstallTarball(npmManifest NpmManifest, version Version) error {
 }
 
 func install(tarReader *tar.Reader, path string) error {
-	err := os.MkdirAll(filepath.Dir(path), 0o755)
+	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	if err != nil {
 		return err
 	}
 
 	out, err := os.Create(path)
+	out.Chmod(os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -121,7 +126,7 @@ func install(tarReader *tar.Reader, path string) error {
 	return nil
 }
 
-func MaxSatisfyingVer(versions []Version, constraint string) (string, error) {
+func MaxSatisfyingVer(versions []Version, constraint string) (Version, error) {
 	c, err := semver.NewConstraint(constraint)
 	if err != nil {
 		return "", err
@@ -141,5 +146,5 @@ func MaxSatisfyingVer(versions []Version, constraint string) (string, error) {
 		}
 	}
 
-	return maxVersion.String(), nil
+	return Version(maxVersion.String()), nil
 }
