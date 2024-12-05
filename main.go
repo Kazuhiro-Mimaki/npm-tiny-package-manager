@@ -3,6 +3,7 @@ package main
 import (
 	"npm-tiny-package-manager/file"
 	"npm-tiny-package-manager/npm"
+	"npm-tiny-package-manager/utils"
 )
 
 func main() {
@@ -15,7 +16,13 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		err = npm.InstallTarball(nm, ver)
+
+		msv, err := npm.MaxSatisfyingVer(utils.MapKeysToSlice(nm.Versions), string(ver))
+		if err != nil {
+			panic(err)
+		}
+
+		err = npm.InstallTarball(nm, npm.Version(msv))
 		if err != nil {
 			panic(err)
 		}

@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 type (
@@ -117,4 +119,27 @@ func install(tarReader *tar.Reader, path string) error {
 	io.Copy(out, tarReader)
 
 	return nil
+}
+
+func MaxSatisfyingVer(versions []Version, constraint string) (string, error) {
+	c, err := semver.NewConstraint(constraint)
+	if err != nil {
+		return "", err
+	}
+
+	var maxVersion *semver.Version
+
+	for i := 0; i < len(versions); i++ {
+		v, err := semver.NewVersion(string(versions[i]))
+		if err != nil {
+			return "", err
+		}
+		if c.Check(v) {
+			if maxVersion == nil || v.GreaterThan(maxVersion) {
+				maxVersion = v
+			}
+		}
+	}
+
+	return maxVersion.String(), nil
 }
