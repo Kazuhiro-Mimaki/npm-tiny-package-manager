@@ -2,8 +2,10 @@ package main
 
 import (
 	"npm-tiny-package-manager/file"
+	"npm-tiny-package-manager/logger"
 	"npm-tiny-package-manager/npm"
 	"npm-tiny-package-manager/resolver"
+	"npm-tiny-package-manager/types"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -15,13 +17,13 @@ func main() {
 	}
 
 	info := resolver.Info{
-		TopLevel: make(map[npm.PackageName]resolver.TopLevel),
+		TopLevel: make(map[types.PackageName]resolver.TopLevel),
 	}
 
 	var eg errgroup.Group
 
 	for pkgName, ver := range root.Dependencies {
-		err = resolver.ResolveRecursively(pkgName, npm.Version(ver), info)
+		err = resolver.ResolveRecursively(pkgName, types.Version(ver), info)
 		if err != nil {
 			panic(err)
 		}
@@ -35,6 +37,7 @@ func main() {
 			}
 			return nil
 		})
+		logger.InstalledLog(pkgName, topLevel.Version)
 	}
 
 	if err := eg.Wait(); err != nil {

@@ -5,21 +5,21 @@ import (
 	"io"
 	"os"
 
-	"npm-tiny-package-manager/npm"
+	"npm-tiny-package-manager/types"
 )
 
 const PATH = "package.json"
 
-func ParsePackageJson() (npm.PackageJson, error) {
+func ParsePackageJson() (types.PackageJson, error) {
 	jsonFile, err := os.Open(PATH)
 	if err != nil {
-		return npm.PackageJson{}, err
+		return types.PackageJson{}, err
 	}
 	defer jsonFile.Close()
 
 	byteValue, _ := io.ReadAll(jsonFile)
 
-	var pkj npm.PackageJson
+	var pkj types.PackageJson
 	json.Unmarshal([]byte(byteValue), &pkj)
 
 	return pkj, nil

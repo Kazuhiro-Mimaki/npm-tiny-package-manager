@@ -11,66 +11,37 @@ import (
 	"path/filepath"
 	"strings"
 
+	"npm-tiny-package-manager/types"
+
 	"github.com/Masterminds/semver/v3"
 )
 
-type (
-	PackageName string
-	Version     string
-)
-
-type (
-	Dependencies map[PackageName]Version
-)
-
-type PackageJson struct {
-	Dependencies    Dependencies
-	DevDependencies Dependencies
-}
-
-type Dist struct {
-	Shasum  string
-	Tarball string
-}
-
-type Manifest struct {
-	Dependencies Dependencies
-	Dist         Dist
-}
-
-type NpmManifest struct {
-	Name     string
-	Versions map[Version]Manifest
-}
-
-type NpmManifestCache map[PackageName]NpmManifest
-
 const REGISTRY = "https://registry.npmjs.org"
 
-var CACHE = make(NpmManifestCache)
+var CACHE = make(types.NpmManifestCache)
 
-func FetchPackageManifest(name PackageName) (NpmManifest, error) {
+func FetchPackageManifest(name types.PackageName) (types.NpmManifest, error) {
 	if v, ok := CACHE[name]; ok {
 		return v, nil
 	}
 	resp, err := http.Get(fmt.Sprintf("%s/%s", REGISTRY, name))
 	if err != nil {
-		return NpmManifest{}, err
+		return types.NpmManifest{}, err
 	}
 	defer resp.Body.Close()
-	var nm NpmManifest
+	var nm types.NpmManifest
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return NpmManifest{}, err
+		return types.NpmManifest{}, err
 	}
 	if err := json.Unmarshal(body, &nm); err != nil {
-		return NpmManifest{}, err
+		return types.NpmManifest{}, err
 	}
 	CACHE[name] = nm
 	return nm, nil
 }
 
-func InstallTarball(pkgName PackageName, tarballUrl string) error {
+func InstallTarball(pkgName types.PackageName, tarballUrl string) error {
 	var err error
 
 	resp, err := http.Get(tarballUrl)
@@ -129,7 +100,7 @@ func install(tarReader *tar.Reader, path string) error {
 	return nil
 }
 
-func MaxSatisfyingVer(versions []Version, constraint string) (Version, error) {
+func MaxSatisfyingVer(versions []types.Version, constraint string) (types.Version, error) {
 	c, err := semver.NewConstraint(constraint)
 	if err != nil {
 		return "", err
@@ -149,5 +120,5 @@ func MaxSatisfyingVer(versions []Version, constraint string) (Version, error) {
 		}
 	}
 
-	return Version(maxVersion.String()), nil
+	return types.Version(maxVersion.String()), nil
 }

@@ -1,22 +1,22 @@
 package resolver
 
 import (
-	"fmt"
-
+	"npm-tiny-package-manager/logger"
 	"npm-tiny-package-manager/npm"
+	"npm-tiny-package-manager/types"
 	"npm-tiny-package-manager/utils"
 )
 
 type Info struct {
-	TopLevel map[npm.PackageName]TopLevel
+	TopLevel map[types.PackageName]TopLevel
 }
 
 type TopLevel struct {
 	TarballUrl string
-	Version    npm.Version
+	Version    types.Version
 }
 
-func ResolveRecursively(pkgName npm.PackageName, constraint npm.Version, installList Info) error {
+func ResolveRecursively(pkgName types.PackageName, constraint types.Version, installList Info) error {
 	manifest, err := npm.FetchPackageManifest(pkgName)
 	if err != nil {
 		return err
@@ -27,13 +27,13 @@ func ResolveRecursively(pkgName npm.PackageName, constraint npm.Version, install
 		return err
 	}
 
-	fmt.Printf("Resolving %s@%s => %s\n", pkgName, constraint, maxVersion)
+	logger.ResolveLog(pkgName, constraint, maxVersion)
 
 	matchedManifest := manifest.Versions[maxVersion]
 
 	installList.TopLevel[pkgName] = TopLevel{
 		TarballUrl: matchedManifest.Dist.Tarball,
-		Version:    npm.Version(maxVersion),
+		Version:    types.Version(maxVersion),
 	}
 
 	if len(matchedManifest.Dependencies) > 0 {
