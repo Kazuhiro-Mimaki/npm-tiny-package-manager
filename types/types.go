@@ -3,10 +3,11 @@ package types
 type (
 	PackageName string
 	Version     string
+	Constraint  string
 )
 
 type (
-	Dependencies map[PackageName]Version
+	Dependencies map[PackageName]Constraint
 )
 
 type PackageJson struct {
@@ -20,8 +21,8 @@ type Dist struct {
 }
 
 type Manifest struct {
-	Dependencies Dependencies
 	Dist         Dist
+	Dependencies Dependencies
 }
 
 type NpmManifest struct {

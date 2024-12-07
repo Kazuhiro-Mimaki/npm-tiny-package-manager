@@ -100,8 +100,8 @@ func install(tarReader *tar.Reader, path string) error {
 	return nil
 }
 
-func MaxSatisfyingVer(versions []types.Version, constraint string) (types.Version, error) {
-	c, err := semver.NewConstraint(constraint)
+func MaxSatisfyingVer(versions []types.Version, constraint types.Constraint) (types.Version, error) {
+	c, err := semver.NewConstraint(string(constraint))
 	if err != nil {
 		return "", err
 	}

@@ -1,6 +1,9 @@
 package resolver
 
 import (
+	"fmt"
+
+	"npm-tiny-package-manager/lock"
 	"npm-tiny-package-manager/logger"
 	"npm-tiny-package-manager/npm"
 	"npm-tiny-package-manager/types"
@@ -16,25 +19,46 @@ type TopLevel struct {
 	Version    types.Version
 }
 
-func ResolveRecursively(pkgName types.PackageName, constraint types.Version, installList Info) error {
-	manifest, err := npm.FetchPackageManifest(pkgName)
-	if err != nil {
-		return err
+func ResolveRecursively(pkgName types.PackageName, constraint types.Constraint, installList Info) error {
+	/**
+	 * Get package manifest from lock
+	 */
+	manifestVersions, ok := lock.GetItem(pkgName, constraint)
+
+	/**
+	 * If the package is not in the lock file, fetch the manifest from npm
+	 */
+	if !ok {
+		manifest, err := npm.FetchPackageManifest(pkgName)
+		if err != nil {
+			return err
+		}
+		manifestVersions = manifest.Versions
 	}
 
-	maxVersion, err := npm.MaxSatisfyingVer(utils.MapKeysToSlice(manifest.Versions), string(constraint))
+	/**
+	 * Resolve semantic version
+	 */
+	maxVersion, err := npm.MaxSatisfyingVer(utils.MapKeysToSlice(manifestVersions), constraint)
 	if err != nil {
 		return err
 	}
 
 	logger.ResolveLog(pkgName, constraint, maxVersion)
 
-	matchedManifest := manifest.Versions[maxVersion]
+	matchedManifest := manifestVersions[maxVersion]
 
 	installList.TopLevel[pkgName] = TopLevel{
 		TarballUrl: matchedManifest.Dist.Tarball,
 		Version:    types.Version(maxVersion),
 	}
+
+	lock.UpsertLock(lock.LockKey(fmt.Sprintf("%s@%s", pkgName, constraint)), lock.Lock{
+		Version:      maxVersion,
+		Shasum:       matchedManifest.Dist.Shasum,
+		Url:          matchedManifest.Dist.Tarball,
+		Dependencies: matchedManifest.Dependencies,
+	})
 
 	if len(matchedManifest.Dependencies) > 0 {
 		for depName, depConstraint := range matchedManifest.Dependencies {

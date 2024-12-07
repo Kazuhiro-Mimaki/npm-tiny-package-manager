@@ -7,7 +7,7 @@ import (
 	"npm-tiny-package-manager/types"
 )
 
-func ResolveLog(pkgName types.PackageName, constraint types.Version, maxVersion types.Version) {
+func ResolveLog(pkgName types.PackageName, constraint types.Constraint, maxVersion types.Version) {
 	slog.Info(fmt.Sprintf("Resolving %s@%s => %s\n", pkgName, constraint, maxVersion))
 }
 
