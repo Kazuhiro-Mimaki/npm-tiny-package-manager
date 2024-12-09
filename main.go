@@ -30,9 +30,11 @@ func main() {
 
 	var eg errgroup.Group
 
-	for pkgName, constraint := range root.Dependencies {
+	rootDependencies := collectDependencies(root)
+
+	for pkgName, constraint := range rootDependencies {
 		dependencyStack := resolver.DependencyStack{Items: []resolver.DependencyStackItem{}}
-		err = resolver.ResolveRecursively(pkgName, constraint, root.Dependencies, info, dependencyStack)
+		err = resolver.ResolveRecursively(pkgName, constraint, rootDependencies, info, dependencyStack)
 		if err != nil {
 			panic(err)
 		}
@@ -63,4 +65,17 @@ func main() {
 	if err := eg.Wait(); err != nil {
 		panic(err)
 	}
+}
+
+func collectDependencies(rootDependencies types.PackageJson) types.Dependencies {
+	allRootDependencies := make(map[types.PackageName]types.Constraint)
+
+	for pkgName, constraint := range rootDependencies.Dependencies {
+		allRootDependencies[pkgName] = constraint
+	}
+	for pkgName, constraint := range rootDependencies.DevDependencies {
+		allRootDependencies[pkgName] = constraint
+	}
+
+	return allRootDependencies
 }
