@@ -1,9 +1,10 @@
 package main
 
 import (
+	"fmt"
+
 	"npm-tiny-package-manager/file"
 	"npm-tiny-package-manager/lock"
-	"npm-tiny-package-manager/logger"
 	"npm-tiny-package-manager/npm"
 	"npm-tiny-package-manager/resolver"
 	"npm-tiny-package-manager/types"
@@ -17,8 +18,9 @@ func main() {
 		panic(err)
 	}
 
-	info := resolver.Info{
-		TopLevel: make(map[types.PackageName]resolver.TopLevel),
+	info := &resolver.Info{
+		TopLevel:   make(map[types.PackageName]resolver.TopLevel),
+		Conflicted: []resolver.Conflicted{},
 	}
 
 	err = lock.ReadLock()
@@ -28,8 +30,9 @@ func main() {
 
 	var eg errgroup.Group
 
-	for pkgName, ver := range root.Dependencies {
-		err = resolver.ResolveRecursively(pkgName, ver, info)
+	for pkgName, constraint := range root.Dependencies {
+		dependencyStack := resolver.DependencyStack{Items: []resolver.DependencyStackItem{}}
+		err = resolver.ResolveRecursively(pkgName, constraint, root.Dependencies, info, dependencyStack)
 		if err != nil {
 			panic(err)
 		}
@@ -37,15 +40,24 @@ func main() {
 
 	lock.SaveLock()
 
-	for pkgName, topLevel := range info.TopLevel {
+	for pkgName, item := range info.TopLevel {
 		eg.Go(func() error {
-			err := npm.InstallTarball(pkgName, topLevel.TarballUrl)
+			err := npm.InstallTarball(pkgName, item.Version, item.TarballUrl, ".")
 			if err != nil {
 				return err
 			}
 			return nil
 		})
-		logger.InstalledLog(pkgName, topLevel.Version)
+	}
+
+	for _, item := range info.Conflicted {
+		eg.Go(func() error {
+			err := npm.InstallTarball(item.Name, item.Version, item.TarballUrl, fmt.Sprintf("./node_modules/%s", item.Parent))
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 	}
 
 	if err := eg.Wait(); err != nil {

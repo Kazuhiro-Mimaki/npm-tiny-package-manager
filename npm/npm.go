@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"npm-tiny-package-manager/logger"
 	"npm-tiny-package-manager/types"
 
 	"github.com/Masterminds/semver/v3"
@@ -20,6 +21,9 @@ const REGISTRY = "https://registry.npmjs.org"
 
 var CACHE = make(types.NpmManifestCache)
 
+/*
+ * Fetch the package manifest from the npm registry
+ */
 func FetchPackageManifest(name types.PackageName) (types.NpmManifest, error) {
 	if v, ok := CACHE[name]; ok {
 		return v, nil
@@ -41,7 +45,10 @@ func FetchPackageManifest(name types.PackageName) (types.NpmManifest, error) {
 	return nm, nil
 }
 
-func InstallTarball(pkgName types.PackageName, tarballUrl string) error {
+/*
+ * Install the package tarball
+ */
+func InstallTarball(pkgName types.PackageName, version types.Version, tarballUrl, location string) error {
 	var err error
 
 	resp, err := http.Get(tarballUrl)
@@ -57,7 +64,7 @@ func InstallTarball(pkgName types.PackageName, tarballUrl string) error {
 
 	tarReader := tar.NewReader(gzf)
 
-	/**
+	/*
 	 * Extract the tarball to the node_modules directory
 	 */
 	for {
@@ -71,7 +78,7 @@ func InstallTarball(pkgName types.PackageName, tarballUrl string) error {
 			return err
 		}
 
-		path := fmt.Sprintf("./node_modules/%s/%s", pkgName, strings.Replace(header.Name, "package/", "", 1))
+		path := fmt.Sprintf("%s/node_modules/%s/%s", location, pkgName, strings.Replace(header.Name, "package/", "", 1))
 
 		err = install(tarReader, path)
 		if err != nil {
@@ -79,9 +86,14 @@ func InstallTarball(pkgName types.PackageName, tarballUrl string) error {
 		}
 	}
 
+	logger.InstalledLog(pkgName, version)
+
 	return nil
 }
 
+/*
+ * Install the package tarball
+ */
 func install(tarReader *tar.Reader, path string) error {
 	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	if err != nil {
@@ -100,6 +112,9 @@ func install(tarReader *tar.Reader, path string) error {
 	return nil
 }
 
+/*
+ * Get the latest version of a package
+ */
 func MaxSatisfyingVer(versions []types.Version, constraint types.Constraint) (types.Version, error) {
 	c, err := semver.NewConstraint(string(constraint))
 	if err != nil {
@@ -121,4 +136,21 @@ func MaxSatisfyingVer(versions []types.Version, constraint types.Constraint) (ty
 	}
 
 	return types.Version(maxVersion.String()), nil
+}
+
+/*
+ * Check if a version satisfies a constraint
+ */
+func Satisfies(version types.Version, constraint types.Constraint) bool {
+	c, err := semver.NewConstraint(string(constraint))
+	if err != nil {
+		return false
+	}
+
+	v, err := semver.NewVersion(string(version))
+	if err != nil {
+		return false
+	}
+
+	return c.Check(v)
 }

@@ -14,3 +14,7 @@ func ResolveLog(pkgName types.PackageName, constraint types.Constraint, maxVersi
 func InstalledLog(pkgName types.PackageName, version types.Version) {
 	slog.Info(fmt.Sprintf("%s@%s Installed\n", pkgName, version))
 }
+
+func ConflictLog(pkgName types.PackageName, constraint types.Constraint, conflictVersion types.Version) {
+	slog.Info(fmt.Sprintf("Conflict %s@%s => %s\n", pkgName, constraint, conflictVersion))
+}

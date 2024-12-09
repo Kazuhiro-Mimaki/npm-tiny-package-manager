@@ -10,6 +10,9 @@ import (
 
 const PATH = "package.json"
 
+/*
+ * Parse the package.json file
+ */
 func ParsePackageJson() (types.PackageJson, error) {
 	jsonFile, err := os.Open(PATH)
 	if err != nil {

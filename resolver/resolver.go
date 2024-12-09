@@ -11,7 +11,8 @@ import (
 )
 
 type Info struct {
-	TopLevel map[types.PackageName]TopLevel
+	TopLevel   map[types.PackageName]TopLevel
+	Conflicted []Conflicted
 }
 
 type TopLevel struct {
@@ -19,55 +20,145 @@ type TopLevel struct {
 	Version    types.Version
 }
 
-func ResolveRecursively(pkgName types.PackageName, constraint types.Constraint, installList Info) error {
-	/**
-	 * Get package manifest from lock
-	 */
-	manifestVersions, ok := lock.GetItem(pkgName, constraint)
+type Conflicted struct {
+	Name       types.PackageName
+	Version    types.Version
+	TarballUrl string
+	Parent     types.PackageName
+}
 
-	/**
-	 * If the package is not in the lock file, fetch the manifest from npm
-	 */
-	if !ok {
-		manifest, err := npm.FetchPackageManifest(pkgName)
-		if err != nil {
-			return err
-		}
-		manifestVersions = manifest.Versions
-	}
-
-	/**
-	 * Resolve semantic version
-	 */
-	maxVersion, err := npm.MaxSatisfyingVer(utils.MapKeysToSlice(manifestVersions), constraint)
+/*
+* DependencyStack is a stack to store the dependencies.
+* It is used to check if there is dependency circulation.
+ */
+func ResolveRecursively(
+	pkgName types.PackageName,
+	constraint types.Constraint,
+	rootDependencies types.Dependencies,
+	installList *Info,
+	dependencyStack DependencyStack,
+) error {
+	matchedManifest, resolvedVer, err := resolvePackage(pkgName, constraint)
 	if err != nil {
 		return err
 	}
+	topLevel, existsInTopLevel := installList.TopLevel[pkgName]
+	rootDependencyConstraint, existsInRootDependency := rootDependencies[pkgName]
 
-	logger.ResolveLog(pkgName, constraint, maxVersion)
-
-	matchedManifest := manifestVersions[maxVersion]
-
-	installList.TopLevel[pkgName] = TopLevel{
-		TarballUrl: matchedManifest.Dist.Tarball,
-		Version:    types.Version(maxVersion),
+	if !existsInTopLevel && len(dependencyStack.Items) == 0 {
+		installList.TopLevel[pkgName] = TopLevel{
+			TarballUrl: matchedManifest.Dist.Tarball,
+			Version:    types.Version(resolvedVer),
+		}
+	} else if !existsInTopLevel && !existsInRootDependency {
+		installList.TopLevel[pkgName] = TopLevel{
+			TarballUrl: matchedManifest.Dist.Tarball,
+			Version:    types.Version(resolvedVer),
+		}
+	} else if !existsInTopLevel && existsInRootDependency {
+		_, resolvedVer, err := resolvePackage(pkgName, rootDependencyConstraint)
+		if err != nil {
+			return err
+		}
+		if !npm.Satisfies(resolvedVer, constraint) {
+			logger.ConflictLog(pkgName, constraint, types.Version(rootDependencyConstraint))
+			installList.Conflicted = append(installList.Conflicted, Conflicted{
+				Name:       pkgName,
+				TarballUrl: matchedManifest.Dist.Tarball,
+				Parent:     dependencyStack.Items[len(dependencyStack.Items)-1].Name,
+				Version:    types.Version(constraint),
+			})
+		}
+	} else {
+		if !npm.Satisfies(topLevel.Version, constraint) {
+			logger.ConflictLog(pkgName, constraint, types.Version(rootDependencyConstraint))
+			installList.Conflicted = append(installList.Conflicted, Conflicted{
+				Name:       pkgName,
+				TarballUrl: matchedManifest.Dist.Tarball,
+				Parent:     dependencyStack.Items[len(dependencyStack.Items)-1].Name,
+				Version:    types.Version(constraint),
+			})
+		}
 	}
 
 	lock.UpsertLock(lock.LockKey(fmt.Sprintf("%s@%s", pkgName, constraint)), lock.Lock{
-		Version:      maxVersion,
+		Version:      resolvedVer,
 		Shasum:       matchedManifest.Dist.Shasum,
 		Url:          matchedManifest.Dist.Tarball,
 		Dependencies: matchedManifest.Dependencies,
 	})
 
-	if len(matchedManifest.Dependencies) > 0 {
-		for depName, depConstraint := range matchedManifest.Dependencies {
-			err = ResolveRecursively(depName, depConstraint, installList)
+	filteredDependencies := make(types.Dependencies)
+	for depName, depConstraint := range matchedManifest.Dependencies {
+		if !hasCirculation(depName, depConstraint, dependencyStack) {
+			filteredDependencies[depName] = depConstraint
+		}
+	}
+
+	if len(filteredDependencies) > 0 {
+		dependencyStack.append(
+			DependencyStackItem{
+				Name:         pkgName,
+				Version:      resolvedVer,
+				Dependencies: filteredDependencies,
+			},
+		)
+		for depName, depConstraint := range filteredDependencies {
+			err = ResolveRecursively(depName, depConstraint, rootDependencies, installList, dependencyStack)
 			if err != nil {
 				return err
 			}
 		}
+		dependencyStack.pop()
 	}
 
 	return nil
+}
+
+/*
+* This function is to resolve the package.
+* If the package is not in the lock file, fetch the manifest from npm.
+* Resolve the semantic version.
+ */
+func resolvePackage(pkgName types.PackageName, constraint types.Constraint) (types.Manifest, types.Version, error) {
+	//  Get package manifest from lock
+	manifestVersions, existsInLock := lock.GetItem(pkgName, constraint)
+
+	// If the package is not in the lock file, fetch the manifest from npm
+	if !existsInLock {
+		manifest, err := npm.FetchPackageManifest(pkgName)
+		if err != nil {
+			return types.Manifest{}, "", err
+		}
+		manifestVersions = manifest.Versions
+	}
+
+	// Resolve semantic version
+	resolvedVer, err := npm.MaxSatisfyingVer(utils.MapKeysToSlice(manifestVersions), constraint)
+	if err != nil {
+		return types.Manifest{}, "", err
+	}
+
+	logger.ResolveLog(pkgName, constraint, resolvedVer)
+
+	return manifestVersions[resolvedVer], resolvedVer, nil
+}
+
+/*
+* This function is to check if there is dependency circulation.
+*
+* If a package is existed in the stack and it satisfy the semantic version,
+* it turns out that there is dependency circulation.
+ */
+func hasCirculation(
+	pkgName types.PackageName,
+	constraint types.Constraint,
+	stack DependencyStack,
+) bool {
+	for _, depStack := range stack.Items {
+		if depStack.Name == pkgName && npm.Satisfies(depStack.Version, constraint) {
+			return true
+		}
+	}
+	return false
 }
