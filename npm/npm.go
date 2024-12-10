@@ -78,7 +78,7 @@ func InstallTarball(pkgName types.PackageName, version types.Version, tarballUrl
 			return err
 		}
 
-		path := fmt.Sprintf("%s/node_modules/%s/%s", location, pkgName, strings.Replace(header.Name, "package/", "", 1))
+		path := fmt.Sprintf("%s/%s", location, strings.Replace(header.Name, "package/", "", 1))
 
 		err = install(tarReader, path)
 		if err != nil {

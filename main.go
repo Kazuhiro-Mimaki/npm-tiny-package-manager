@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"npm-tiny-package-manager/cli"
 	"npm-tiny-package-manager/file"
 	"npm-tiny-package-manager/lock"
 	"npm-tiny-package-manager/npm"
@@ -13,6 +14,11 @@ import (
 )
 
 func main() {
+	installOptions, err := cli.Parse()
+	if err != nil {
+		panic(err)
+	}
+
 	root, err := file.ParsePackageJson()
 	if err != nil {
 		panic(err)
@@ -30,7 +36,15 @@ func main() {
 
 	var eg errgroup.Group
 
-	rootDependencies := collectDependencies(root)
+	for _, pkgName := range installOptions.Packages {
+		if installOptions.SaveDev {
+			root.DevDependencies[types.PackageName(pkgName)] = "*"
+		} else {
+			root.Dependencies[types.PackageName(pkgName)] = "*"
+		}
+	}
+
+	rootDependencies := collectDependencies(root, installOptions.Production)
 
 	for pkgName, constraint := range rootDependencies {
 		dependencyStack := resolver.DependencyStack{Items: []resolver.DependencyStackItem{}}
@@ -44,7 +58,7 @@ func main() {
 
 	for pkgName, item := range info.TopLevel {
 		eg.Go(func() error {
-			err := npm.InstallTarball(pkgName, item.Version, item.TarballUrl, ".")
+			err := npm.InstallTarball(pkgName, item.Version, item.TarballUrl, fmt.Sprintf("./node_modules/%s", pkgName))
 			if err != nil {
 				return err
 			}
@@ -54,7 +68,7 @@ func main() {
 
 	for _, item := range info.Conflicted {
 		eg.Go(func() error {
-			err := npm.InstallTarball(item.Name, item.Version, item.TarballUrl, fmt.Sprintf("./node_modules/%s", item.Parent))
+			err := npm.InstallTarball(item.Name, item.Version, item.TarballUrl, fmt.Sprintf("./node_modules/%s/node_modules/%s", item.Parent, item.Name))
 			if err != nil {
 				return err
 			}
@@ -67,8 +81,12 @@ func main() {
 	}
 }
 
-func collectDependencies(rootDependencies types.PackageJson) types.Dependencies {
+func collectDependencies(rootDependencies types.PackageJson, isPrd bool) types.Dependencies {
 	allRootDependencies := make(map[types.PackageName]types.Constraint)
+
+	if isPrd {
+		return rootDependencies.Dependencies
+	}
 
 	for pkgName, constraint := range rootDependencies.Dependencies {
 		allRootDependencies[pkgName] = constraint

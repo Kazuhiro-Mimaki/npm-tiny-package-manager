@@ -22,7 +22,10 @@ func ParsePackageJson() (types.PackageJson, error) {
 
 	byteValue, _ := io.ReadAll(jsonFile)
 
-	var pkj types.PackageJson
+	pkj := types.PackageJson{
+		Dependencies:    make(map[types.PackageName]types.Constraint),
+		DevDependencies: make(map[types.PackageName]types.Constraint),
+	}
 	json.Unmarshal([]byte(byteValue), &pkj)
 
 	return pkj, nil

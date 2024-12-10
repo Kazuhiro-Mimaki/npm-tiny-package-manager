@@ -3,9 +3,8 @@
   "version": "1.0.0",
   "description": "The npm tiny package manager",
   "dependencies": {
-    "eslint-scope": "^5.0.0"
-  },
-  "devDependencies": {
-    "estraverse": "^3.0.0"
+    "eslint-scope": "^5.0.0",
+    "estraverse": "^3.0.0",
+    "eslint": "*"
   }
 }
