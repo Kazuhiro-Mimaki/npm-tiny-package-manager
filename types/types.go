@@ -10,11 +10,6 @@ type (
 	Dependencies map[PackageName]Constraint
 )
 
-type PackageJson struct {
-	Dependencies    Dependencies
-	DevDependencies Dependencies
-}
-
 type Dist struct {
 	Shasum  string
 	Tarball string

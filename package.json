@@ -1,9 +1,11 @@
 {
-  "name": "npm-tiny-package-manager",
-  "version": "1.0.0",
-  "description": "The npm tiny package manager",
-  "dependencies": {
+  "Name": "npm-tiny-package-manager",
+  "Version": "1.0.0",
+  "Description": "The npm tiny package manager",
+  "Dependencies": {
+    "eslint": "*",
     "eslint-scope": "^5.0.0",
     "estraverse": "^3.0.0"
-  }
+  },
+  "DevDependencies": {}
 }

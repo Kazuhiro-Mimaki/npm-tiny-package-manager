@@ -54,8 +54,6 @@ func main() {
 		}
 	}
 
-	lock.SaveLock()
-
 	for pkgName, item := range info.TopLevel {
 		eg.Go(func() error {
 			err := npm.InstallTarball(pkgName, item.Version, item.TarballUrl, fmt.Sprintf("./node_modules/%s", pkgName))
@@ -79,9 +77,18 @@ func main() {
 	if err := eg.Wait(); err != nil {
 		panic(err)
 	}
+
+	err = lock.SaveLock()
+	if err != nil {
+		panic(err)
+	}
+	err = file.WritePackageJson(root)
+	if err != nil {
+		panic(err)
+	}
 }
 
-func collectDependencies(rootDependencies types.PackageJson, isPrd bool) types.Dependencies {
+func collectDependencies(rootDependencies file.PackageJson, isPrd bool) types.Dependencies {
 	allRootDependencies := make(map[types.PackageName]types.Constraint)
 
 	if isPrd {
