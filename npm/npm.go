@@ -95,6 +95,12 @@ func InstallTarball(pkgName types.PackageName, version types.Version, tarballUrl
  * Install the package tarball
  */
 func install(tarReader *tar.Reader, path string) error {
+	if path == fmt.Sprintf("./%s/", filepath.Dir(path)) {
+		return nil
+	}
+	if !isDir(filepath.Dir(path)) {
+		os.Remove(filepath.Dir(path))
+	}
 	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	if err != nil {
 		return err
@@ -110,6 +116,14 @@ func install(tarReader *tar.Reader, path string) error {
 	io.Copy(out, tarReader)
 
 	return nil
+}
+
+func isDir(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return info.IsDir()
 }
 
 /*
