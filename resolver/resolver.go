@@ -38,7 +38,7 @@ func ResolveRecursively(
 	installList *Info,
 	dependencyStack DependencyStack,
 ) error {
-	matchedManifest, resolvedVer, err := resolvePackage(pkgName, constraint)
+	matchedManifest, resolvedVer, err := ResolvePackage(pkgName, constraint)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func ResolveRecursively(
 			Version:    types.Version(resolvedVer),
 		}
 	} else if !existsInTopLevel && existsInRootDependency {
-		_, resolvedVer, err := resolvePackage(pkgName, rootDependencyConstraint)
+		_, resolvedVer, err := ResolvePackage(pkgName, rootDependencyConstraint)
 		if err != nil {
 			return err
 		}
@@ -120,7 +120,7 @@ func ResolveRecursively(
 * If the package is not in the lock file, fetch the manifest from npm.
 * Resolve the semantic version.
  */
-func resolvePackage(pkgName types.PackageName, constraint types.Constraint) (types.Manifest, types.Version, error) {
+func ResolvePackage(pkgName types.PackageName, constraint types.Constraint) (types.Manifest, types.Version, error) {
 	//  Get package manifest from lock
 	manifestVersions, existsInLock := lock.GetItem(pkgName, constraint)
 

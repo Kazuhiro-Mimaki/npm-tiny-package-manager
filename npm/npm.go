@@ -168,3 +168,8 @@ func Satisfies(version types.Version, constraint types.Constraint) bool {
 
 	return c.Check(v)
 }
+
+func IsValid(version string) bool {
+	_, err := semver.NewConstraint(version)
+	return err == nil
+}

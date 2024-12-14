@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"npm-tiny-package-manager/cli"
 	"npm-tiny-package-manager/file"
@@ -37,10 +38,25 @@ func main() {
 	var eg errgroup.Group
 
 	for _, pkgName := range installOptions.Packages {
+		constraint := "*"
+		if strings.Contains(pkgName, "@") {
+			v := pkgName[strings.LastIndex(pkgName, "@")+1:]
+			if npm.IsValid(v) {
+				constraint = v
+				pkgName = pkgName[:strings.LastIndex(pkgName, "@")]
+			}
+		}
+		if constraint == "*" {
+			_, resolvedVer, err := resolver.ResolvePackage(types.PackageName(pkgName), types.Constraint(constraint))
+			if err != nil {
+				panic(err)
+			}
+			constraint = string(fmt.Sprintf("^%s", resolvedVer))
+		}
 		if installOptions.SaveDev {
-			root.DevDependencies[types.PackageName(pkgName)] = "*"
+			root.DevDependencies[types.PackageName(pkgName)] = types.Constraint(constraint)
 		} else {
-			root.Dependencies[types.PackageName(pkgName)] = "*"
+			root.Dependencies[types.PackageName(pkgName)] = types.Constraint(constraint)
 		}
 	}
 
