@@ -8,6 +8,10 @@ type DependencyStackItem struct {
 	Dependencies types.Dependencies
 }
 
+/*
+ * The dependency stack is used to resolve the dependencies recursively.
+ * The dependency stack is a stack of the dependencies.
+ */
 type DependencyStack struct {
 	Items []DependencyStackItem
 }

@@ -11,6 +11,9 @@ type InstallOptions struct {
 	Packages   []string
 }
 
+/*
+ * Parse the command line arguments
+ */
 func Parse() (InstallOptions, error) {
 	prd := flag.Bool("production", false, "production")
 	saveDev := flag.Bool("save-dev", false, "save-dev")

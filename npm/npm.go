@@ -13,8 +13,6 @@ import (
 
 	"npm-tiny-package-manager/logger"
 	"npm-tiny-package-manager/types"
-
-	"github.com/Masterminds/semver/v3"
 )
 
 const REGISTRY = "https://registry.npmjs.org"
@@ -124,52 +122,4 @@ func isDir(path string) bool {
 		return false
 	}
 	return info.IsDir()
-}
-
-/*
- * Get the latest version of a package
- */
-func MaxSatisfyingVer(versions []types.Version, constraint types.Constraint) (types.Version, error) {
-	c, err := semver.NewConstraint(string(constraint))
-	if err != nil {
-		return "", err
-	}
-
-	var maxVersion *semver.Version
-
-	for i := 0; i < len(versions); i++ {
-		v, err := semver.NewVersion(string(versions[i]))
-		if err != nil {
-			return "", err
-		}
-		if c.Check(v) {
-			if maxVersion == nil || v.GreaterThan(maxVersion) {
-				maxVersion = v
-			}
-		}
-	}
-
-	return types.Version(maxVersion.String()), nil
-}
-
-/*
- * Check if a version satisfies a constraint
- */
-func Satisfies(version types.Version, constraint types.Constraint) bool {
-	c, err := semver.NewConstraint(string(constraint))
-	if err != nil {
-		return false
-	}
-
-	v, err := semver.NewVersion(string(version))
-	if err != nil {
-		return false
-	}
-
-	return c.Check(v)
-}
-
-func IsValid(version string) bool {
-	_, err := semver.NewConstraint(version)
-	return err == nil
 }

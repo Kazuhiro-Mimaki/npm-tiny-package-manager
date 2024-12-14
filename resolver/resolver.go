@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"fmt"
+	"strings"
 
 	"npm-tiny-package-manager/lock"
 	"npm-tiny-package-manager/logger"
@@ -28,8 +29,7 @@ type Conflicted struct {
 }
 
 /*
-* DependencyStack is a stack to store the dependencies.
-* It is used to check if there is dependency circulation.
+ * Resolve the dependencies recursively.
  */
 func ResolveRecursively(
 	pkgName types.PackageName,
@@ -60,7 +60,7 @@ func ResolveRecursively(
 		if err != nil {
 			return err
 		}
-		if !npm.Satisfies(resolvedVer, constraint) {
+		if !utils.Satisfies(string(resolvedVer), string(constraint)) {
 			logger.ConflictLog(pkgName, constraint, types.Version(rootDependencyConstraint))
 			installList.Conflicted = append(installList.Conflicted, Conflicted{
 				Name:       pkgName,
@@ -70,7 +70,7 @@ func ResolveRecursively(
 			})
 		}
 	} else {
-		if !npm.Satisfies(topLevel.Version, constraint) {
+		if !utils.Satisfies(string(topLevel.Version), string(constraint)) {
 			logger.ConflictLog(pkgName, constraint, types.Version(rootDependencyConstraint))
 			installList.Conflicted = append(installList.Conflicted, Conflicted{
 				Name:       pkgName,
@@ -117,7 +117,7 @@ func ResolveRecursively(
 
 /*
 * This function is to resolve the package.
-* If the package is not in the lock file, fetch the manifest from npm.
+* If the package is not in the lock file, fetch the manifest from utils.
 * Resolve the semantic version.
  */
 func ResolvePackage(pkgName types.PackageName, constraint types.Constraint) (types.Manifest, types.Version, error) {
@@ -134,14 +134,20 @@ func ResolvePackage(pkgName types.PackageName, constraint types.Constraint) (typ
 	}
 
 	// Resolve semantic version
-	resolvedVer, err := npm.MaxSatisfyingVer(utils.MapKeysToSlice(manifestVersions), constraint)
+	resolvedVer, err := utils.MaxSatisfyingVer(convertManifestVersions(manifestVersions), string(constraint))
+	ver := types.Version(resolvedVer)
 	if err != nil {
 		return types.Manifest{}, "", err
 	}
 
-	logger.ResolveLog(pkgName, constraint, resolvedVer)
+	logger.ResolveLog(pkgName, constraint, ver)
 
-	return manifestVersions[resolvedVer], resolvedVer, nil
+	return manifestVersions[ver], ver, nil
+}
+
+func convertManifestVersions(manifestVersions map[types.Version]types.Manifest) []string {
+	converter := func(a types.Version) string { return string(a) }
+	return utils.ConvertSliceType(utils.MapKeysToSlice(manifestVersions), converter)
 }
 
 /*
@@ -156,9 +162,31 @@ func hasCirculation(
 	stack DependencyStack,
 ) bool {
 	for _, depStack := range stack.Items {
-		if depStack.Name == pkgName && npm.Satisfies(depStack.Version, constraint) {
+		if depStack.Name == pkgName && utils.Satisfies(string(depStack.Version), string(constraint)) {
 			return true
 		}
 	}
 	return false
+}
+
+/*
+* This function is to resolve the installed packages.
+ */
+func ResolveInstalledPackages(pkgName string) (string, error) {
+	constraint := "*"
+	if strings.Contains(pkgName, "@") {
+		v := pkgName[strings.LastIndex(pkgName, "@")+1:]
+		if utils.IsValid(v) {
+			constraint = v
+			pkgName = pkgName[:strings.LastIndex(pkgName, "@")]
+		}
+	}
+	if constraint == "*" {
+		_, resolvedVer, err := ResolvePackage(types.PackageName(pkgName), types.Constraint(constraint))
+		if err != nil {
+			return "", err
+		}
+		constraint = string(fmt.Sprintf("^%s", resolvedVer))
+	}
+	return constraint, nil
 }

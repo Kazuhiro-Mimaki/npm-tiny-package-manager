@@ -2,12 +2,11 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"npm-tiny-package-manager/cli"
-	"npm-tiny-package-manager/file"
 	"npm-tiny-package-manager/lock"
 	"npm-tiny-package-manager/npm"
+	"npm-tiny-package-manager/package_json"
 	"npm-tiny-package-manager/resolver"
 	"npm-tiny-package-manager/types"
 
@@ -20,7 +19,7 @@ func main() {
 		panic(err)
 	}
 
-	root, err := file.ParsePackageJson()
+	root, err := package_json.ParsePackageJson()
 	if err != nil {
 		panic(err)
 	}
@@ -38,20 +37,9 @@ func main() {
 	var eg errgroup.Group
 
 	for _, pkgName := range installOptions.Packages {
-		constraint := "*"
-		if strings.Contains(pkgName, "@") {
-			v := pkgName[strings.LastIndex(pkgName, "@")+1:]
-			if npm.IsValid(v) {
-				constraint = v
-				pkgName = pkgName[:strings.LastIndex(pkgName, "@")]
-			}
-		}
-		if constraint == "*" {
-			_, resolvedVer, err := resolver.ResolvePackage(types.PackageName(pkgName), types.Constraint(constraint))
-			if err != nil {
-				panic(err)
-			}
-			constraint = string(fmt.Sprintf("^%s", resolvedVer))
+		constraint, err := resolver.ResolveInstalledPackages(pkgName)
+		if err != nil {
+			panic(err)
 		}
 		if installOptions.SaveDev {
 			root.DevDependencies[types.PackageName(pkgName)] = types.Constraint(constraint)
@@ -98,13 +86,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = file.WritePackageJson(root)
+	err = package_json.WritePackageJson(root)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func collectDependencies(rootDependencies file.PackageJson, isPrd bool) types.Dependencies {
+func collectDependencies(rootDependencies package_json.PackageJson, isPrd bool) types.Dependencies {
 	allRootDependencies := make(map[types.PackageName]types.Constraint)
 
 	if isPrd {

@@ -24,27 +24,18 @@ type (
 const PATH = "package-lock.json"
 
 /*
- * Why we use two separated locks?
- * This is useful when removing packages.
- * When adding or removing packages,
- * the lock file can be updated automatically without any manual operations.
- */
-
-/*
- * This is the old lock.
  * The old lock is only for reading from the lock file,
  * so the old lock should be read only except reading the lock file.
  */
 var OldLock LockMap
 
 /*
- * This is the new lock.
  * The new lock is only for writing to the lock file,
  * so the new lock should be written only except saving the lock file.
  */
 var NewLock LockMap
 
-/**
+/*
  * Simply read the lock file.
  * Skip it if we cannot find the lock file.
  */
@@ -66,7 +57,7 @@ func ReadLock() error {
 	return nil
 }
 
-/**
+/*
  * Retrieve the information of a package by name and it's semantic
  * version range.
  *
@@ -94,7 +85,7 @@ func GetItem(pkgName types.PackageName, constraint types.Constraint) (map[types.
 	return res, true
 }
 
-/**
+/*
  * Save the information of a package to the lock.
  * If that information is not existed in the lock, create it.
  * Otherwise, just update it.
@@ -106,7 +97,7 @@ func UpsertLock(lockKey LockKey, lock Lock) {
 	NewLock[lockKey] = lock
 }
 
-/**
+/*
  * Simply save the lock file.
  */
 func SaveLock() error {

@@ -1,7 +1,7 @@
 package utils
 
-/**
-* MapValuesToSlice converts a map value to a slice by extracting values
+/*
+ * MapValuesToSlice converts a map value to a slice by extracting values
  */
 func MapValuesToSlice[K comparable, V any](m map[K]V) []V {
 	values := make([]V, 0, len(m))
@@ -11,8 +11,8 @@ func MapValuesToSlice[K comparable, V any](m map[K]V) []V {
 	return values
 }
 
-/**
-* MapKeysToSlice converts a map key to a slice by extracting keys
+/*
+ * MapKeysToSlice converts a map key to a slice by extracting keys
  */
 func MapKeysToSlice[K comparable, V any](m map[K]V) []K {
 	keys := make([]K, 0, len(m))
